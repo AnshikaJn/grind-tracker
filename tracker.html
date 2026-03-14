@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2-Week Grind Tracker — Mar 14–27</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDy5t3cSCilDzpOIYJhXpTqxB41xLvqIM4",
+      authDomain: "grind-trackers.firebaseapp.com",
+      projectId: "grind-trackers",
+      storageBucket: "grind-trackers.firebasestorage.app",
+      messagingSenderId: "957974267399",
+      appId: "1:957974267399:web:3e5f9bd9b48e5a56aa4ca2",
+      measurementId: "G-6SMZRNS3KD"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+    window._db = db;
+    window._fsDoc = doc;
+    window._fsGet = getDoc;
+    window._fsSet = setDoc;
+    window._firebaseReady = true;
+    document.dispatchEvent(new Event('firebaseReady'));
+  </script>
+  <style>
+    :root {
+      --bg: #fdf0f0;
+      --surface: #ffffff;
+      --surface2: #fce8e8;
+      --border: #f2cece;
+      --accent: #c97b8a;
+      --accent2: #e8a4b0;
+      --green: #7db88a;
+      --yellow: #c9a05a;
+      --red: #c96a6a;
+      --text: #3d1f28;
+      --muted: #a8808a;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    header p { color: var(--muted); margin-top: 6px; }
+
+    .stats-bar {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 24px;
+      text-align: center;
+      min-width: 120px;
+    }
+
+    .stat-card .value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat-card .label { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+    .week-tabs {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .tab-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 8px 24px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .days-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .day-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .day-card.today { border-color: var(--accent); }
+    .day-card.complete { border-color: var(--green); }
+
+    .day-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .day-header .date-info .day-name {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .day-header .date-info .date-str {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .day-badge {
+      font-size: 0.7rem;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+
+    .badge-today { background: rgba(201,123,138,0.18); color: var(--accent); }
+    .badge-done  { background: rgba(125,184,138,0.18); color: var(--green); }
+    .badge-past  { background: rgba(168,128,138,0.15); color: var(--muted); }
+
+    .progress-bar {
+      height: 4px;
+      background: var(--border);
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.4s ease;
+    }
+
+    .tasks-list {
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.02);
+      transition: background 0.15s;
+    }
+
+    .task-item:hover { background: rgba(255,255,255,0.05); }
+
+    .task-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .task-item label {
+      cursor: pointer;
+      font-size: 0.875rem;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .task-item.checked label { text-decoration: line-through; color: var(--muted); }
+
+    .task-emoji { font-size: 1rem; }
+
+    .task-tag {
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(201,123,138,0.12);
+      color: var(--accent);
+      font-weight: 600;
+      margin-left: auto;
+      white-space: nowrap;
+    }
+
+    .tag-sd   { background: rgba(180,130,160,0.15); color: #a0607a; }
+    .tag-lc   { background: rgba(201,160,90,0.15);  color: var(--yellow); }
+    .tag-fit  { background: rgba(125,184,138,0.18); color: var(--green); }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(60,20,30,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.hidden { display: none; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 480px;
+      width: 90%;
+      box-shadow: 0 24px 64px rgba(180,100,120,0.15);
+    }
+
+    .modal h2 {
+      font-size: 1.4rem;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .modal p { color: var(--muted); font-size: 0.9rem; margin-bottom: 20px; }
+
+    .modal-checklist {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 24px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
+    .modal-checklist .task-item {
+      background: var(--surface2);
+    }
+
+    .modal-notes {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.875rem;
+      resize: vertical;
+      min-height: 70px;
+      margin-bottom: 20px;
+      font-family: inherit;
+    }
+
+    .modal-notes:focus { outline: none; border-color: var(--accent); }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      padding: 10px 22px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: opacity 0.15s;
+    }
+
+    .btn:hover { opacity: 0.85; }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-ghost {
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .eod-trigger {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 14px 22px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(201,123,138,0.35);
+      transition: transform 0.15s, box-shadow 0.15s;
+      z-index: 900;
+    }
+
+    .eod-trigger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(201,123,138,0.5);
+    }
+
+    .log-section {
+      margin-top: 32px;
+    }
+
+    .log-section h2 {
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .log-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.825rem;
+    }
+
+    .log-table th {
+      background: var(--surface2);
+      padding: 10px 14px;
+      text-align: left;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .log-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(46,46,62,0.5);
+    }
+
+    .log-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+
+    .dot-green { background: var(--green); }
+    .dot-red   { background: var(--red); }
+
+    @media (max-width: 600px) {
+      body { padding: 12px; }
+      .days-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>2-Week Grind Tracker</h1>
+  <p>March 14 – March 27, 2026 &nbsp;·&nbsp; Build the habit, lock in.</p>
+  <p id="profileBadge" style="margin-top:8px;font-size:0.8rem;color:var(--muted)">
+    Tracking as: <strong id="profileName" style="color:var(--accent)"></strong>
+    &nbsp;<button onclick="switchProfile()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;text-decoration:underline">switch</button>
+  </p>
+</header>
+
+<div class="stats-bar" id="statsBar"></div>
+
+<div class="week-tabs">
+  <button class="tab-btn active" onclick="showWeek(1)">Week 1 · Mar 14–20</button>
+  <button class="tab-btn" onclick="showWeek(2)">Week 2 · Mar 21–27</button>
+  <button class="tab-btn" onclick="showWeek(0)">All Days</button>
+</div>
+
+<div class="days-grid" id="daysGrid"></div>
+
+<div class="log-section">
+  <h2>📋 End-of-Day Log</h2>
+  <table class="log-table" id="logTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Tasks Done</th>
+        <th>Score</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody id="logBody"></tbody>
+  </table>
+</div>
+
+<button class="eod-trigger" onclick="openEOD()">🌙 End of Day Check-in</button>
+
+<!-- Profile Picker Modal -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal" style="text-align:center">
+    <h2>👋 Who are you?</h2>
+    <p style="margin-bottom:20px">Enter your name — your progress will be saved to the cloud and synced across all devices.</p>
+    <input type="text" id="profileInput" placeholder="Your name (e.g. Anshika)" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:1rem;font-family:inherit;background:var(--surface2);color:var(--text);margin-bottom:20px" />
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-primary" onclick="setProfile()">Let's Go 🚀</button>
+    </div>
+  </div>
+</div>
+
+<!-- EOD Modal -->
+<div class="modal-overlay hidden" id="eodModal">
+  <div class="modal">
+    <h2>🌙 End of Day Check-in</h2>
+    <p id="eodModalDate">How did today go? Tap what you accomplished.</p>
+    <div class="modal-checklist" id="eodChecklist"></div>
+    <textarea class="modal-notes" id="eodNotes" placeholder="Any notes, reflections, or blockers for tomorrow…"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeEOD()">Skip</button>
+      <button class="btn btn-primary" onclick="saveEOD()">Save Today ✓</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+
+const START = new Date('2026-03-14');
+const DAYS  = 14;
+
+const SD_BLOCKS = [
+  'Load Balancers',
+  'Caching (Redis / Memcached)',
+  'Databases — SQL vs NoSQL & Sharding',
+  'Message Queues (Kafka / RabbitMQ)',
+  'CDN & Edge Networks',
+  'API Gateway & Rate Limiting',
+  'Microservices & Service Discovery',
+  'Consistent Hashing & Replication',
+];
+
+const DAYS_OF_WEEK = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+
+let PROFILE = localStorage.getItem('grind_profile') || '';
+
+function loadData() {
+  try { return JSON.parse(localStorage.getItem('grind_tracker_v2_' + PROFILE) || '{}'); }
+  catch { return {}; }
+}
+
+function saveData(d) {
+  localStorage.setItem('grind_tracker_v2_' + PROFILE, JSON.stringify(d));
+  syncToFirestore(d);
+}
+
+async function syncToFirestore(d) {
+  if (!window._firebaseReady || !PROFILE) return;
+  try {
+    await window._fsSet(window._fsDoc(window._db, 'users', PROFILE), d, { merge: false });
+  } catch(e) { console.warn('Firestore sync failed', e); }
+}
+
+async function loadFromFirestore() {
+  if (!window._firebaseReady || !PROFILE) return;
+  try {
+    const snap = await window._fsGet(window._fsDoc(window._db, 'users', PROFILE));
+    if (snap.exists()) {
+      DATA = snap.data();
+      localStorage.setItem('grind_tracker_v2_' + PROFILE, JSON.stringify(DATA));
+      renderStats(); renderDays(); renderLog();
+    }
+  } catch(e) { console.warn('Firestore load failed', e); }
+}
+
+let DATA = loadData();
+
+// ─── TASKS PER DAY ────────────────────────────────────────────────────────────
+
+function tasksForDay(idx) {
+  // idx 0-13, week = 0 or 1
+  const week = idx < 7 ? 0 : 1;
+  const d = new Date(START);
+  d.setDate(d.getDate() + idx);
+  const dow = d.getDay(); // 0=Sun
+
+  const tasks = [];
+
+  // Fitness
+  tasks.push({ id: 'steps',   label: '10,000 Steps',    emoji: '👟', tag: 'Fitness',  tagClass: 'tag-fit' });
+  tasks.push({ id: 'meal',    label: 'Home Cooked Meal', emoji: '🍳', tag: 'Nutrition', tagClass: 'tag-fit' });
+  tasks.push({ id: 'run',     label: 'Morning Run',      emoji: '🏃', tag: 'Fitness',  tagClass: 'tag-fit' });
+
+  // Gym (4 per week — Mon/Tue/Thu/Fri)
+  if ([1,2,4,5].includes(dow)) {
+    tasks.push({ id: 'gym', label: 'Gym Session', emoji: '💪', tag: 'Gym Split', tagClass: 'tag-fit' });
+  }
+
+  // LeetCode — 2 easy + 4 medium every day
+  tasks.push({ id: 'lc_easy1', label: 'LeetCode Easy #1', emoji: '🟢', tag: 'LC Easy', tagClass: 'tag-lc' });
+  tasks.push({ id: 'lc_easy2', label: 'LeetCode Easy #2', emoji: '🟢', tag: 'LC Easy', tagClass: 'tag-lc' });
+  tasks.push({ id: 'lc_med1',  label: 'LeetCode Medium #1', emoji: '🟡', tag: 'LC Medium', tagClass: 'tag-lc' });
+  tasks.push({ id: 'lc_med2',  label: 'LeetCode Medium #2', emoji: '🟡', tag: 'LC Medium', tagClass: 'tag-lc' });
+  tasks.push({ id: 'lc_med3',  label: 'LeetCode Medium #3', emoji: '🟡', tag: 'LC Medium', tagClass: 'tag-lc' });
+  tasks.push({ id: 'lc_med4',  label: 'LeetCode Medium #4', emoji: '🟡', tag: 'LC Medium', tagClass: 'tag-lc' });
+
+  // System Design
+  if (idx < 8) {
+    tasks.push({ id: 'sd', label: `SD Block: ${SD_BLOCKS[idx]}`, emoji: '🏗️', tag: 'SD Block', tagClass: 'tag-sd' });
+  } else {
+    tasks.push({ id: 'sd', label: 'System Design Practice', emoji: '⚙️', tag: 'SD Practice', tagClass: 'tag-sd' });
+  }
+
+  return tasks;
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+
+let currentWeek = 1;
+
+function dayKey(idx) {
+  const d = new Date(START);
+  d.setDate(d.getDate() + idx);
+  return d.toISOString().slice(0,10);
+}
+
+function isToday(idx) {
+  return dayKey(idx) === new Date().toISOString().slice(0,10);
+}
+
+function isPast(idx) {
+  return new Date(dayKey(idx)) < new Date(new Date().toISOString().slice(0,10));
+}
+
+function renderDays() {
+  const grid = document.getElementById('daysGrid');
+  grid.innerHTML = '';
+
+  for (let i = 0; i < DAYS; i++) {
+    const week = i < 7 ? 1 : 2;
+    if (currentWeek !== 0 && currentWeek !== week) continue;
+
+    const key   = dayKey(i);
+    const d     = new Date(START);
+    d.setDate(d.getDate() + i);
+    const tasks = tasksForDay(i);
+    const saved = DATA[key] || {};
+
+    const done  = tasks.filter(t => saved[t.id]).length;
+    const total = tasks.length;
+    const pct   = total ? Math.round(done / total * 100) : 0;
+
+    const card  = document.createElement('div');
+    card.className = 'day-card' + (isToday(i) ? ' today' : '') + (pct === 100 ? ' complete' : '');
+
+    const badge = isToday(i)  ? '<span class="day-badge badge-today">Today</span>'
+                : pct === 100 ? '<span class="day-badge badge-done">✓ Done</span>'
+                : isPast(i)   ? '<span class="day-badge badge-past">Past</span>'
+                : '';
+
+    card.innerHTML = `
+      <div class="day-header">
+        <div class="date-info">
+          <div class="day-name">${DAYS_OF_WEEK[d.getDay()]}</div>
+          <div class="date-str">${MONTHS[d.getMonth()]} ${d.getDate()}</div>
+        </div>
+        ${badge}
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width:${pct}%"></div>
+      </div>
+      <div class="tasks-list" id="tasks-${i}"></div>
+    `;
+
+    grid.appendChild(card);
+
+    const list = card.querySelector(`#tasks-${i}`);
+    tasks.forEach(t => {
+      const checked = !!saved[t.id];
+      const item = document.createElement('div');
+      item.className = 'task-item' + (checked ? ' checked' : '');
+      item.innerHTML = `
+        <input type="checkbox" id="cb-${i}-${t.id}" ${checked ? 'checked' : ''} />
+        <label for="cb-${i}-${t.id}">
+          <span class="task-emoji">${t.emoji}</span>
+          ${t.label}
+          <span class="task-tag ${t.tagClass}">${t.tag}</span>
+        </label>
+      `;
+      item.querySelector('input').addEventListener('change', e => {
+        if (!DATA[key]) DATA[key] = {};
+        DATA[key][t.id] = e.target.checked;
+        saveData(DATA);
+        item.classList.toggle('checked', e.target.checked);
+        renderDays();
+        renderStats();
+        renderLog();
+      });
+      list.appendChild(item);
+    });
+  }
+}
+
+function showWeek(w) {
+  currentWeek = w;
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', i === (w === 1 ? 0 : w === 2 ? 1 : 2));
+  });
+  renderDays();
+}
+
+// ─── STATS ────────────────────────────────────────────────────────────────────
+
+function renderStats() {
+  let totalTasks = 0, doneTasks = 0;
+  let gymDone = 0, runDone = 0, stepsDone = 0, mealDone = 0;
+  let lcEasy = 0, lcMed = 0, sdDone = 0;
+
+  for (let i = 0; i < DAYS; i++) {
+    const key   = dayKey(i);
+    const tasks = tasksForDay(i);
+    const saved = DATA[key] || {};
+    totalTasks += tasks.length;
+    tasks.forEach(t => {
+      if (saved[t.id]) {
+        doneTasks++;
+        if (t.id === 'gym')     gymDone++;
+        if (t.id === 'run')     runDone++;
+        if (t.id === 'steps')   stepsDone++;
+        if (t.id === 'meal')    mealDone++;
+        if (t.id.startsWith('lc_easy')) lcEasy++;
+        if (t.id.startsWith('lc_med'))  lcMed++;
+        if (t.id === 'sd')      sdDone++;
+      }
+    });
+  }
+
+  const bar = document.getElementById('statsBar');
+  bar.innerHTML = [
+    { v: `${doneTasks}/${totalTasks}`, l: 'Tasks Done' },
+    { v: `${stepsDone}/14`,           l: '10k Steps Days' },
+    { v: `${gymDone}/8`,              l: 'Gym Sessions' },
+    { v: `${runDone}/14`,             l: 'Morning Runs' },
+    { v: `${mealDone}/14`,            l: 'Home Meals' },
+    { v: `${lcEasy}/28`,             l: 'LC Easy' },
+    { v: `${lcMed}/56`,             l: 'LC Medium' },
+    { v: `${sdDone}/14`,             l: 'SD Days' },
+  ].map(s => `
+    <div class="stat-card">
+      <div class="value">${s.v}</div>
+      <div class="label">${s.l}</div>
+    </div>
+  `).join('');
+}
+
+// ─── LOG TABLE ────────────────────────────────────────────────────────────────
+
+function renderLog() {
+  const tbody = document.getElementById('logBody');
+  tbody.innerHTML = '';
+  const logs = DATA['_logs'] || {};
+
+  for (let i = 0; i < DAYS; i++) {
+    const key   = dayKey(i);
+    const d     = new Date(START);
+    d.setDate(d.getDate() + i);
+    const tasks = tasksForDay(i);
+    const saved = DATA[key] || {};
+    const done  = tasks.filter(t => saved[t.id]);
+    const total = tasks.length;
+    const pct   = total ? Math.round(done.length / total * 100) : 0;
+    const notes = logs[key] || '';
+
+    if (!isPast(i) && !isToday(i) && done.length === 0) continue;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${DAYS_OF_WEEK[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}</strong></td>
+      <td>${done.map(t => t.emoji).join(' ')} <span style="color:var(--muted)">${done.length}/${total}</span></td>
+      <td><span style="color:${pct>=80?'var(--green)':pct>=50?'var(--yellow)':'var(--red)'}">${pct}%</span></td>
+      <td style="color:var(--muted);font-size:0.8rem">${notes || '—'}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+// ─── EOD MODAL ────────────────────────────────────────────────────────────────
+
+function todayIdx() {
+  const today = new Date().toISOString().slice(0,10);
+  for (let i = 0; i < DAYS; i++) { if (dayKey(i) === today) return i; }
+  return 0;
+}
+
+function openEOD() {
+  const idx   = todayIdx();
+  const key   = dayKey(idx);
+  const d     = new Date(START);
+  d.setDate(d.getDate() + idx);
+  const tasks = tasksForDay(idx);
+  const saved = DATA[key] || {};
+  const logs  = DATA['_logs'] || {};
+
+  document.getElementById('eodModalDate').textContent =
+    `${DAYS_OF_WEEK[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()} — What did you accomplish today?`;
+
+  const cl = document.getElementById('eodChecklist');
+  cl.innerHTML = '';
+  tasks.forEach(t => {
+    const checked = !!saved[t.id];
+    const item = document.createElement('div');
+    item.className = 'task-item' + (checked ? ' checked' : '');
+    item.innerHTML = `
+      <input type="checkbox" id="eod-${t.id}" ${checked ? 'checked' : ''} />
+      <label for="eod-${t.id}">
+        <span class="task-emoji">${t.emoji}</span>
+        ${t.label}
+        <span class="task-tag ${t.tagClass}">${t.tag}</span>
+      </label>
+    `;
+    item.querySelector('input').addEventListener('change', e => {
+      item.classList.toggle('checked', e.target.checked);
+    });
+    cl.appendChild(item);
+  });
+
+  document.getElementById('eodNotes').value = logs[key] || '';
+  document.getElementById('eodModal').classList.remove('hidden');
+}
+
+function closeEOD() {
+  document.getElementById('eodModal').classList.add('hidden');
+}
+
+function saveEOD() {
+  const idx   = todayIdx();
+  const key   = dayKey(idx);
+  const tasks = tasksForDay(idx);
+
+  if (!DATA[key]) DATA[key] = {};
+  if (!DATA['_logs']) DATA['_logs'] = {};
+
+  document.querySelectorAll('#eodChecklist input[type=checkbox]').forEach((cb, i) => {
+    DATA[key][tasks[i].id] = cb.checked;
+  });
+
+  DATA['_logs'][key] = document.getElementById('eodNotes').value.trim();
+  saveData(DATA);
+
+  closeEOD();
+  renderDays();
+  renderStats();
+  renderLog();
+}
+
+// ─── PROFILE ─────────────────────────────────────────────────────────────────
+
+function switchProfile() {
+  PROFILE = '';
+  localStorage.removeItem('grind_profile');
+  document.getElementById('profileInput').value = '';
+  document.getElementById('profileModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('profileInput').focus(), 100);
+}
+
+function setProfile() {
+  const val = document.getElementById('profileInput').value.trim();
+  if (!val) return;
+  PROFILE = val.toLowerCase().replace(/\s+/g, '_');
+  localStorage.setItem('grind_profile', PROFILE);
+  DATA = loadData();
+  document.getElementById('profileModal').classList.add('hidden');
+  document.getElementById('profileName').textContent = val;
+  renderStats(); renderDays(); renderLog();
+  if (window._firebaseReady) loadFromFirestore();
+  else document.addEventListener('firebaseReady', loadFromFirestore, { once: true });
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+
+// Show profile name in header
+document.getElementById('profileName').textContent = PROFILE.replace(/_/g,' ') || '';
+
+if (!PROFILE) {
+  // Show profile picker
+  document.getElementById('profileModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('profileInput').focus(), 100);
+} else {
+  document.getElementById('profileModal').classList.add('hidden');
+  if (window._firebaseReady) loadFromFirestore();
+  else document.addEventListener('firebaseReady', loadFromFirestore, { once: true });
+}
+
+// Auto-open EOD modal if it's after 11pm and hasn't been submitted today
+(function autoEOD() {
+  const h = new Date().getHours();
+  if (h >= 23) {
+    const idx = todayIdx();
+    const key = dayKey(idx);
+    const logs = DATA['_logs'] || {};
+    if (!logs[key]) {
+      setTimeout(openEOD, 800);
+    }
+  }
+})();
+
+renderStats();
+renderDays();
+renderLog();
+</script>
+</body>
+</html>
